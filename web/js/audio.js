@@ -15,7 +15,7 @@ class AudioEngine {
       return;
     }
     const AC = window.AudioContext || window.webkitAudioContext;
-    const ctx = (this.ctx = new AC({ latencyHint: 'interactive' }));
+    const ctx = new AC({ latencyHint: 'interactive' });
 
     // iOS 잠금 해제용 무음 재생
     const silent = ctx.createBufferSource();
@@ -23,6 +23,12 @@ class AudioEngine {
     silent.connect(ctx.destination);
     silent.start(0);
 
+    this.setup(ctx);
+  }
+
+  // 오디오 그래프 구성 (실시간 재생과 파일 렌더링(OfflineAudioContext)이 공통으로 사용)
+  setup(ctx) {
+    this.ctx = ctx;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -16;
     comp.knee.value = 12;
@@ -32,7 +38,7 @@ class AudioEngine {
 
     this.master = ctx.createGain();
     // 자동 테스트 전용: 주소에 ?mute 가 붙으면 전체 음소거 (일반 접속에는 영향 없음)
-    this.muted = new URLSearchParams(location.search).has('mute');
+    this.muted = typeof location !== 'undefined' && new URLSearchParams(location.search).has('mute') && !(ctx instanceof (window.OfflineAudioContext || Object));
     this.master.gain.value = this.muted ? 0 : 0.9;
     this.master.connect(comp);
     comp.connect(ctx.destination);

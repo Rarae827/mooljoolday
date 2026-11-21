@@ -9,3 +9,6 @@ desktop.ini
 .idea/
 __pycache__/
 *.log
+
+# 로컬에서 만든 음원 파일 (GitHub에 올리지 않음)
+music/
