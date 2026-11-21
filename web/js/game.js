@@ -911,10 +911,9 @@
     if (it > 0 && it < 3.4 && (G.state === 'intro' || G.state === 'play')) {
       const fade = it < 2.5 ? 1 : Math.max(0, 1 - (it - 2.5) / 0.7);
       const pop = (start) => (it < start ? 0 : easeOutBack(Math.min(1, (it - start) / 0.35)));
-      const s1 = pop(0.95), s2 = pop(1.1), s3 = pop(1.3);
-      if (s1 > 0) text('지금은', 360, 400, 46, { scale: s1, alpha: fade, weight: 700 });
-      if (s2 > 0) text('MooljoolDay', 360, 490, 96, { scale: s2, alpha: fade, weight: 900 });
-      if (s3 > 0) text('(물줄때)!', 360, 580, 60, { scale: s3, alpha: fade, weight: 800 });
+      const s1 = pop(0.95), s2 = pop(1.1);
+      if (s1 > 0) text('지금은', 360, 430, 46, { scale: s1, alpha: fade, weight: 700 });
+      if (s2 > 0) text('MooljoolDay!', 360, 525, 96, { scale: s2, alpha: fade, weight: 900 });
     }
     if (G.state === 'play' && G.hintA > 0) {
       text('좌우로 움직여 물방울을 받아요!', 360, 760, 34, { alpha: G.hintA, weight: 700 });
