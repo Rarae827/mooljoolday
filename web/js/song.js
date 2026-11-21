@@ -133,9 +133,13 @@ function buildSong(song) {
 const TIERS = {
   // verse/chorus: 한 박 안에서 물방울을 채울 위치(박 단위) · holdMin: 이 박자 이상 긴 음은 물뿌리개
   // wide: 채움 물방울을 반대편으로 크게 튀게 (어려움)
-  1: { name: '쉬움', verse: [0.5], verseEvery: 2, chorus: [0.5], holdMin: 0, fall: 1.7, wide: false },
-  2: { name: '보통', verse: [0.5], chorus: [0.5, 0.75], holdMin: 2, fall: 1.5, wide: false },
-  3: { name: '어려움', verse: [0.5, 0.75], chorus: [0.25, 0.5, 0.75], holdMin: 1.5, fall: 1.3, wide: true },
+  // 쉬움: 같은 줄 연속음을 물뿌리개로 묶어 '따라가며 머무르기' 위주 (Like a Dino! 느낌)
+  // 어려움: 채움 물방울을 늘리고 좌우로 크게 튀게
+  // 물방울은 멜로디(실제로 들리는 음)만 따라감 · 억지로 채우지 않음
+  // 쉬움: 같은 줄 연속음은 물뿌리개로 묶기 / 보통·어려움: 길게 끄는 음만 물뿌리개
+  1: { name: '쉬움', verse: [], chorus: [], mergeRun: 2, holdMin: 1.5, fall: 1.9, wide: false },
+  2: { name: '보통', verse: [], chorus: [], mergeRun: 0, holdMin: 2, fall: 1.75, wide: false },
+  3: { name: '어려움', verse: [], chorus: [], mergeRun: 0, holdMin: 3, fall: 1.7, wide: false },
 };
 const MIN_GAP_SEC = 0.12; // 물방울 사이 최소 간격 (1배속)
 
@@ -154,10 +158,31 @@ function buildChart(song, melody, bars, bpb) {
     c.lane = Math.min(LANES - 1, Math.floor((rank * LANES) / pitches.length));
   });
 
+  // 같은 줄에서 쉬지 않고 이어지는 음들 → 물뿌리개 하나로 묶기
+  if (T.mergeRun) {
+    const merged = [];
+    let i = 0;
+    while (i < chart.length) {
+      let j = i;
+      while (j + 1 < chart.length && chart[j + 1].lane === chart[i].lane
+        && chart[j + 1].beat - (chart[j].beat + chart[j].dur) < 0.01) j++;
+      if (j - i + 1 >= T.mergeRun) {
+        const last = chart[j];
+        const ticks = chart.slice(i + 1, j + 1).map((n) => ({ beat: n.beat, midi: n.midi }));
+        merged.push(Object.assign({}, chart[i], { hold: Math.max(1, last.beat + last.dur - chart[i].beat - 0.4), ticks }));
+      } else {
+        for (let k = i; k <= j; k++) merged.push(chart[k]);
+      }
+      i = j + 1;
+    }
+    chart.length = 0;
+    chart.push(...merged);
+  }
+
   // 긴 음 → 물뿌리개 (꾹 머물기)
   if (T.holdMin) {
     chart.forEach((c) => {
-      if (c.dur >= T.holdMin) c.hold = Math.max(1, c.dur - 0.5);
+      if (!c.hold && c.dur >= T.holdMin) c.hold = Math.max(1, c.dur - 0.5);
     });
   }
 
@@ -178,8 +203,10 @@ function buildChart(song, melody, bars, bpb) {
     if (!b.charted) continue;
     const isChorus = b.feel === 'chorus';
     if (!isChorus && T.verseEvery && Math.round(beat - b.start) % T.verseEvery) continue;
+    if (isChorus && T.chorusEvery && Math.round(beat - b.start) % T.chorusEvery) continue;
     const pat = isChorus ? T.chorus : T.verse;
     for (const off of pat) {
+      if (Math.abs(off * 2 - Math.round(off * 2)) > 1e-6) continue; // 반주가 없는 16분 자리는 쓰지 않음
       const p = beat + off;
       if (p <= startBeat || p >= endBeat || !free(p)) continue;
       const rel = p - b.start;
@@ -222,7 +249,7 @@ function buildChart(song, melody, bars, bpb) {
   const holds = notes.filter((n) => n.hold).length;
   const nps = notes.length / sec;
   const mps = move / sec;
-  const level = Math.round(LEVEL_BASE + LEVEL_NPS * nps + LEVEL_MPS * mps + holds * 0.04 + (1.7 - T.fall) * 8);
+  const level = Math.round(LEVEL_BASE + LEVEL_NPS * nps + LEVEL_MPS * mps + holds * 0.04 + (1.8 - T.fall) * 8);
   return { notes, stats: { tier: tierNo, fall: T.fall, level, nps: +nps.toFixed(2), mps: +mps.toFixed(2), holds, count: notes.length, sec: Math.round(sec) } };
 }
 const LEVEL_BASE = 10, LEVEL_NPS = 2.6, LEVEL_MPS = 1.3;

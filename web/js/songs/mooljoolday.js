@@ -9,7 +9,6 @@ SONGS.mooljoolday = {
   theme: true,
   level: 2,
   bpm: 92,
-  pattern: { chorus: [0.25, 0.5, 0.75] },
   // b: 베이스음, v: 기타 보이싱(낮은 음 → 높은 음)
   chords: {
     D: { b: 38, v: [50, 57, 62, 66, 69] },

@@ -357,7 +357,12 @@
     G.drops = G.drops.filter((d) => d.st !== 'gone');
     for (const c of SONG.chart) {
       const d = { time: start + c.beat * spb, lane: c.lane, midi: c.midi, x: LANES[c.lane], y: SPAWN_Y, st: 'wait', fall };
-      if (c.hold) { d.hold = true; d.endTime = start + (c.beat + c.hold) * spb; d.tick = spb * 0.5; }
+      if (c.hold) {
+        d.hold = true;
+        d.endTime = start + (c.beat + c.hold) * spb;
+        d.ticks = (c.ticks || []).map((k) => ({ time: start + k.beat * spb, midi: k.midi }));
+        d.tickIdx = 0;
+      }
       G.drops.push(d);
     }
   }
@@ -403,55 +408,67 @@
         G.holdHintShown = true;
         G.toast = { text: '물뿌리개는 꾹! 따라가요', t: 0, color: '#FFE2B8' };
       }
-      if (t >= d.time - WIN_EARLY && under) {
-        d.st = 'holding';
-        d.away = 0;
-        d.nextTick = d.time + d.tick;
-        addCombo(10, L);
-        char.squash = 0.6;
-        engine.sfxCatch(d.midi);
-      } else if (t > d.time + WIN_LATE) {
-        d.st = 'missed';
-        loseLife();
-        if (G.state !== 'play') return true;
-      }
-    } else if (d.st === 'holding') {
-      if (!under) {
-        d.away += dt;
-        if (d.away > 0.16) {
-          d.st = 'broken';
-          loseLife();
-          if (G.state !== 'play') return true;
-          return false;
+      if (t >= d.time - WIN_EARLY) { d.st = 'pour'; d.away = 0; }
+    }
+    if (d.st === 'pour') {
+      // 물줄기가 쏟아지는 동안: 밑에 있으면 받고, 벗어났다가 돌아와도 다시 이어서 받을 수 있음
+      if (under) {
+        if (!d.touched) {
+          d.touched = true;
+          addCombo(10, L);
+          char.squash = 0.6;
+          engine.sfxCatch(d.midi);
+        } else if (!d.wasUnder) {
+          char.squash = Math.max(char.squash, 0.4);
         }
-      } else {
+        d.wasUnder = true;
         d.away = 0;
         if (char.face !== 'hurt') setFace('happy', 0.15);
         if (Math.random() < dt * 30) burst(d.x + (Math.random() - 0.5) * 20, CATCH_Y - 4, 1, ['#9CCBFF', '#ffffff'], 260);
+      } else if (d.wasUnder) {
+        d.away += dt;
+        if (d.away > 0.2) {
+          // 잠깐 벗어나면 콤보만 끊기고 목숨은 그대로
+          d.wasUnder = false;
+          G.combo = 0;
+        }
       }
-      while (t >= d.nextTick && d.nextTick < d.endTime - 1e-3) {
-        d.nextTick += d.tick;
-        addCombo(5, L);
-        char.squash = Math.max(char.squash, 0.25);
+      // 물뿌리개 안의 멜로디 음마다 콤보 (노래에서 실제로 들리는 박자)
+      while (d.tickIdx < d.ticks.length && t >= d.ticks[d.tickIdx].time) {
+        if (under) {
+          addCombo(5, L);
+          char.squash = Math.max(char.squash, 0.3);
+          engine.sfxCatch(d.ticks[d.tickIdx].midi);
+        }
+        d.tickIdx++;
       }
       if (t >= d.endTime) {
-        d.st = 'gone';
-        addCombo(20, L);
-        char.squash = 0.9;
-        burst(char.x, CATCH_Y - 10, 14, ['#9CCBFF', '#FFE2B8', '#ffffff'], 520);
-        engine.sfxCatch(d.midi + 7);
+        if (!d.touched) {
+          d.st = 'missed';
+          loseLife();
+          if (G.state !== 'play') return true;
+        } else {
+          d.st = 'gone';
+          if (under) {
+            addCombo(20, L);
+            char.squash = 0.9;
+            burst(char.x, CATCH_Y - 10, 14, ['#9CCBFF', '#FFE2B8', '#ffffff'], 520);
+          }
+        }
       }
-    } else if ((d.st === 'missed' || d.st === 'broken') && tailY >= GROUND_Y) {
+    } else if (d.st === 'missed' && tailY >= GROUND_Y) {
       d.st = 'gone';
     }
     return false;
   }
 
+
   function drawHold(d, t) {
     const yOf = (time) => CATCH_Y - ((time - t) / d.fall) * (CATCH_Y - SPAWN_Y);
     const tailY = yOf(d.endTime);
-    const headY = d.st === 'holding' ? CATCH_Y : yOf(d.time);
-    const dead = d.st === 'missed' || d.st === 'broken';
+    // 쏟아지는 중: 밑에 있으면 화분으로, 벗어나 있으면 바닥까지
+    const headY = d.st === 'pour' ? (d.wasUnder ? CATCH_Y : Math.min(GROUND_Y, yOf(d.time))) : yOf(d.time);
+    const dead = d.st === 'missed';
     ctx.save();
     ctx.globalAlpha = dead ? 0.35 : 1;
     // 물줄기
@@ -480,7 +497,7 @@
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    if (d.st !== 'holding') Ddam.drawWaterDrop(ctx, d.x, headY, 19, 1);
+    if (d.st === 'fall') Ddam.drawWaterDrop(ctx, d.x, headY, 19, 1);
     Ddam.drawWateringCan(ctx, d.x, tailY);
     ctx.restore();
   }
