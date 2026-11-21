@@ -100,6 +100,7 @@
   ];
   SONGS.jingle = {
     id: 'jingle', title: '징글벨', subtitle: '제임스 피어폰트', level: 2, bpm: 120,
+    pattern: { verse: [0.5, 0.75] },
     sections: [
       { feel: 'intro', chart: false, bars: [['C', 'r:4'], ['G7', 'r:4']] },
       { feel: 'verse', bars: jingle },
@@ -129,6 +130,7 @@
   ];
   SONGS.ode = {
     id: 'ode', title: '환희의 송가', subtitle: '베토벤 · 교향곡 9번', level: 2, bpm: 116,
+    pattern: { chorus: [0.5] },
     sections: [
       { feel: 'intro', chart: false, bars: [['D', 'r:4'], ['A', 'r:4']] },
       { feel: 'verse', bars: ode },
@@ -152,6 +154,7 @@
   ];
   SONGS.canon = {
     id: 'canon', title: '캐논', subtitle: '파헬벨', level: 2, bpm: 80, soft: true,
+    pattern: { verse: [0.5, 0.75], chorus: [0.25, 0.5, 0.75], holdMin: 4 },
     sections: [
       { feel: 'intro', chart: false, bars: [['D A', 'r:4'], ['Bm F#m', 'r:4']] },
       { feel: 'verse', bars: [...canon1, ...canon2] },

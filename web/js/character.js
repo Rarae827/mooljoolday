@@ -727,6 +727,69 @@
     c.restore();
   }
 
+  // 물뿌리개: 주둥이 끝(x, tipY)에서 물줄기가 아래로 쏟아짐
+  function drawWateringCan(c, x, tipY) {
+    c.save();
+    c.translate(x, tipY);
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    // 주둥이
+    c.strokeStyle = '#C77A35';
+    c.lineWidth = 11;
+    c.beginPath();
+    c.moveTo(4, -6);
+    c.lineTo(28, -30);
+    c.stroke();
+    c.strokeStyle = '#F2A65A';
+    c.lineWidth = 6;
+    c.stroke();
+    // 물뿌리개 꼭지(로즈)
+    c.save();
+    c.rotate(-0.8);
+    c.beginPath();
+    c.ellipse(0, -2, 11, 6, 0, 0, Math.PI * 2);
+    c.fillStyle = '#F6C08A';
+    c.fill();
+    c.lineWidth = 2.5;
+    c.strokeStyle = '#C77A35';
+    c.stroke();
+    c.fillStyle = '#C77A35';
+    for (const px of [-5, 0, 5]) { c.beginPath(); c.arc(px, -2, 1.3, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+    // 손잡이
+    c.strokeStyle = '#C77A35';
+    c.lineWidth = 6;
+    c.beginPath();
+    c.arc(56, -48, 16, Math.PI * 1.05, Math.PI * 0.05);
+    c.stroke();
+    // 몸통
+    c.beginPath();
+    c.moveTo(26, -60);
+    c.lineTo(70, -60);
+    c.quadraticCurveTo(76, -60, 75, -52);
+    c.lineTo(72, -22);
+    c.quadraticCurveTo(71, -14, 63, -14);
+    c.lineTo(33, -14);
+    c.quadraticCurveTo(25, -14, 24, -22);
+    c.lineTo(21, -52);
+    c.quadraticCurveTo(20, -60, 26, -60);
+    c.closePath();
+    const g = c.createLinearGradient(0, -60, 0, -14);
+    g.addColorStop(0, '#F8BE7E');
+    g.addColorStop(1, '#EA9447');
+    c.fillStyle = g;
+    c.fill();
+    c.lineWidth = 3;
+    c.strokeStyle = '#C77A35';
+    c.stroke();
+    // 띠 + 물방울 마크
+    c.fillStyle = 'rgba(255,255,255,.35)';
+    c.fillRect(23, -44, 51, 7);
+    drawWaterDrop(c, 48, -27, 6.5, 1);
+    c.restore();
+  }
+
   window.Ddam = {
+    drawWateringCan,
     drawPlantIcon, drawDdam, drawWaterDrop, drawLeafIcon, drawFlower, mix, PLANTS, PLANT_ORDER };
 })();

@@ -323,7 +323,7 @@
     Object.assign(G, {
       state: 'intro', score: 0, combo: 0, maxCombo: 0, lives: 3, laps: 0, growth: 0, caught: 0,
       drops: [], lap: null, banner: null, toast: null, introT: 0, overT: 0, popDone: false, hintA: 0, overShown: false,
-      paused: false, resuming: false, resumeT: 0,
+      paused: false, resuming: false, resumeT: 0, holdHintShown: false,
     });
     char.pop = 0;
     char.popV = 0;
@@ -352,11 +352,13 @@
 
   function beginLap(start, mult) {
     const spb = 60 / (SONG.bpm * mult);
-    const fall = BASE_FALL / Math.pow(mult, 0.8);
+    const fall = (SONG.stats ? SONG.stats.fall : BASE_FALL) / Math.pow(mult, 0.8);
     G.lap = { start, mult, spb, fall, evIdx: 0, end: start + SONG.totalBeats * spb };
     G.drops = G.drops.filter((d) => d.st !== 'gone');
     for (const c of SONG.chart) {
-      G.drops.push({ time: start + c.beat * spb, lane: c.lane, midi: c.midi, x: LANES[c.lane], y: SPAWN_Y, st: 'wait', fall });
+      const d = { time: start + c.beat * spb, lane: c.lane, midi: c.midi, x: LANES[c.lane], y: SPAWN_Y, st: 'wait', fall };
+      if (c.hold) { d.hold = true; d.endTime = start + (c.beat + c.hold) * spb; d.tick = spb * 0.5; }
+      G.drops.push(d);
     }
   }
 
@@ -381,6 +383,106 @@
     char.squash = 1;
     burst(char.x, CHAR_Y - 230 * CHAR_S, 22, ['#FFB3C4', '#FFD45C', '#ffffff'], 520);
     beginLap(engine.now + 0.7, next);
+  }
+
+  // ---------- 물뿌리개 (롱노트) ----------
+  // 물줄기가 판정선에 닿을 때 밑에 있으면 시작, 물줄기가 끝날 때까지 밑에 머무르면 성공
+  function addCombo(points, L) {
+    G.combo++;
+    G.caught++;
+    G.maxCombo = Math.max(G.maxCombo, G.combo);
+    G.score = Math.round(G.score + points * (1 + Math.floor(G.combo / 10)) * L.mult);
+    if (G.combo >= SATISFY_COMBO) quenched();
+  }
+
+  function updateHold(d, t, dt, L) {
+    const tailY = CATCH_Y - ((d.endTime - t) / d.fall) * (CATCH_Y - SPAWN_Y);
+    const under = Math.abs(d.x - char.x) < HIT * 1.15;
+    if (d.st === 'fall') {
+      if (!G.holdHintShown) {
+        G.holdHintShown = true;
+        G.toast = { text: '물뿌리개는 꾹! 따라가요', t: 0, color: '#FFE2B8' };
+      }
+      if (t >= d.time - WIN_EARLY && under) {
+        d.st = 'holding';
+        d.away = 0;
+        d.nextTick = d.time + d.tick;
+        addCombo(10, L);
+        char.squash = 0.6;
+        engine.sfxCatch(d.midi);
+      } else if (t > d.time + WIN_LATE) {
+        d.st = 'missed';
+        loseLife();
+        if (G.state !== 'play') return true;
+      }
+    } else if (d.st === 'holding') {
+      if (!under) {
+        d.away += dt;
+        if (d.away > 0.16) {
+          d.st = 'broken';
+          loseLife();
+          if (G.state !== 'play') return true;
+          return false;
+        }
+      } else {
+        d.away = 0;
+        if (char.face !== 'hurt') setFace('happy', 0.15);
+        if (Math.random() < dt * 30) burst(d.x + (Math.random() - 0.5) * 20, CATCH_Y - 4, 1, ['#9CCBFF', '#ffffff'], 260);
+      }
+      while (t >= d.nextTick && d.nextTick < d.endTime - 1e-3) {
+        d.nextTick += d.tick;
+        addCombo(5, L);
+        char.squash = Math.max(char.squash, 0.25);
+      }
+      if (t >= d.endTime) {
+        d.st = 'gone';
+        addCombo(20, L);
+        char.squash = 0.9;
+        burst(char.x, CATCH_Y - 10, 14, ['#9CCBFF', '#FFE2B8', '#ffffff'], 520);
+        engine.sfxCatch(d.midi + 7);
+      }
+    } else if ((d.st === 'missed' || d.st === 'broken') && tailY >= GROUND_Y) {
+      d.st = 'gone';
+    }
+    return false;
+  }
+
+  function drawHold(d, t) {
+    const yOf = (time) => CATCH_Y - ((time - t) / d.fall) * (CATCH_Y - SPAWN_Y);
+    const tailY = yOf(d.endTime);
+    const headY = d.st === 'holding' ? CATCH_Y : yOf(d.time);
+    const dead = d.st === 'missed' || d.st === 'broken';
+    ctx.save();
+    ctx.globalAlpha = dead ? 0.35 : 1;
+    // 물줄기
+    const top = tailY + 8;
+    if (headY > top) {
+      const g = ctx.createLinearGradient(d.x - 14, 0, d.x + 14, 0);
+      g.addColorStop(0, 'rgba(111,174,240,.55)');
+      g.addColorStop(0.5, 'rgba(191,224,255,.95)');
+      g.addColorStop(1, 'rgba(111,174,240,.55)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(d.x - 13, top, 26, headY - top, 13);
+      else ctx.rect(d.x - 13, top, 26, headY - top);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(46,108,191,.55)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // 흐르는 물결 표시
+      ctx.strokeStyle = 'rgba(255,255,255,.8)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 14]);
+      ctx.lineDashOffset = -G.time * 220;
+      ctx.beginPath();
+      ctx.moveTo(d.x, top + 6);
+      ctx.lineTo(d.x, headY - 6);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (d.st !== 'holding') Ddam.drawWaterDrop(ctx, d.x, headY, 19, 1);
+    Ddam.drawWateringCan(ctx, d.x, tailY);
+    ctx.restore();
   }
 
   function thirsty() {
@@ -559,6 +661,10 @@
         if (G.hintA > 0.99) G.hintA = 0.98;
       }
       d.y = CATCH_Y - ((d.time - t) / d.fall) * (CATCH_Y - SPAWN_Y);
+      if (d.hold) {
+        if (updateHold(d, t, dt, L)) return;
+        continue;
+      }
       if (d.st === 'fall') {
         if (t >= d.time - WIN_EARLY && Math.abs(d.x - char.x) < HIT) {
           d.st = 'gone';
@@ -700,8 +806,10 @@
   }
 
   function drawDrops() {
+    const t = engine.ctx ? engine.now - engine.latency : 0;
+    for (const d of G.drops) if (d.hold && d.st !== 'wait' && d.st !== 'gone') drawHold(d, t);
     for (const d of G.drops) {
-      if (d.st !== 'fall' && d.st !== 'miss') continue;
+      if (d.hold || (d.st !== 'fall' && d.st !== 'miss')) continue;
       Ddam.drawWaterDrop(ctx, d.x, d.y, 19, d.st === 'miss' ? 0.6 : 1);
     }
     for (const pd of G.puddles) {
