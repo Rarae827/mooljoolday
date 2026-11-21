@@ -138,8 +138,8 @@ const TIERS = {
   // 물방울은 멜로디(실제로 들리는 음)만 따라감 · 억지로 채우지 않음
   // 쉬움: 같은 줄 연속음은 물뿌리개로 묶기 / 보통·어려움: 길게 끄는 음만 물뿌리개
   1: { name: '쉬움', verse: [], chorus: [], mergeRun: 2, holdMin: 1.5, fall: 1.9, wide: false },
-  2: { name: '보통', verse: [], chorus: [], mergeRun: 0, holdMin: 2, fall: 1.75, wide: false },
-  3: { name: '어려움', verse: [], chorus: [], mergeRun: 0, holdMin: 3, fall: 1.7, wide: false },
+  2: { name: '보통', verse: [], chorus: [], mergeRun: 0, holdMin: 2, fall: 1.75, wide: false, twist: true, split: true },
+  3: { name: '어려움', verse: [], chorus: [], mergeRun: 0, holdMin: 3, fall: 1.7, wide: false, twist: true, split: true, splitVerseMin: 1 },
 };
 const MIN_GAP_SEC = 0.12; // 물방울 사이 최소 간격 (1배속)
 
@@ -147,6 +147,8 @@ function buildChart(song, melody, bars, bpb) {
   const tierNo = song.theme ? 2 : Math.max(1, Math.min(3, song.level || 1));
   // 곡별 미세 조정(song.pattern)이 있으면 덮어씀
   const T = Object.assign({}, TIERS[tierNo], song.pattern || {});
+  // faithful 곡(테마곡·엘리제)은 멜로디 그대로: 줄 꼬기·박자 쪼개기 안 함
+  if (song.faithful) { T.twist = false; T.split = false; }
   const LANES = 5;
   const spb = 60 / song.bpm;
   const chart = melody.slice().sort((a, b) => a.beat - b.beat);
@@ -157,6 +159,11 @@ function buildChart(song, melody, bars, bpb) {
     const rank = pitches.indexOf(c.midi);
     c.lane = Math.min(LANES - 1, Math.floor((rank * LANES) / pitches.length));
   });
+
+  // 줄 순서 살짝 꼬기: 후렴은 좌우를 뒤집어서 같은 멜로디도 다르게 움직이게
+  if (T.twist) {
+    chart.forEach((c) => { if (c.feel === 'chorus') c.lane = LANES - 1 - c.lane; });
+  }
 
   // 같은 줄에서 쉬지 않고 이어지는 음들 → 물뿌리개 하나로 묶기
   if (T.mergeRun) {
@@ -184,6 +191,26 @@ function buildChart(song, melody, bars, bpb) {
     chart.forEach((c) => {
       if (!c.hold && c.dur >= T.holdMin) c.hold = Math.max(1, c.dur - 0.5);
     });
+  }
+
+  // 박자 쪼개기: 한 박 이상 이어지는 음(물뿌리개 제외) 가운데에 옆 줄 물방울 하나
+  // 반주가 치는 8분음표 자리에만, 후렴은 4분음표부터 / 그 외는 점4분음표 이상만
+  const splits = [];
+  if (T.split) {
+    let side = 1;
+    chart.forEach((c) => {
+      if (c.hold) return;
+      const minDur = c.feel === 'chorus' ? 1 : (T.splitVerseMin || 1.5);
+      if (c.dur < minDur) return;
+      const p = c.beat + Math.floor(c.dur) / 2 >= c.beat + 0.5 ? c.beat + Math.max(0.5, Math.floor(c.dur * 2 / 2) / 2) : null;
+      if (p == null || p >= c.beat + c.dur - 1e-6) return;
+      let lane = c.lane + side;
+      if (lane < 0 || lane > LANES - 1) lane = c.lane - side;
+      side = -side;
+      splits.push({ beat: p, lane, midi: c.midi, split: true });
+    });
+    chart.push(...splits);
+    chart.sort((a, b) => a.beat - b.beat);
   }
 
   // 빈 박 채우기 (반주 아르페지오 모양을 따라 물방울이 출렁이게)

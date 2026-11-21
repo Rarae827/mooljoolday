@@ -7,6 +7,7 @@ SONGS.mooljoolday = {
   title: 'MooljoolDay',
   subtitle: '땀땀이의 테마 · 오리지널',
   theme: true,
+  faithful: true, // 채보는 멜로디 그대로 (꼬기·쪼개기 없음)
   level: 2,
   bpm: 92,
   // b: 베이스음, v: 기타 보이싱(낮은 음 → 높은 음)

@@ -151,7 +151,7 @@
     ['G A', 'G4:1 B4:1 A4:1 G4:1'],
   ];
   SONGS.canon = {
-    id: 'canon', title: '캐논', subtitle: '파헬벨', level: 2, bpm: 80, soft: true,
+    id: 'canon', title: '캐논', subtitle: '파헬벨', level: 1, bpm: 80, soft: true,
     sections: [
       { feel: 'intro', chart: false, bars: [['D A', 'r:4'], ['Bm F#m', 'r:4']] },
       { feel: 'verse', bars: [...canon1, ...canon2] },
@@ -170,13 +170,24 @@
     ['Am', 'A4:1 r:.5 C4:.5 E4:.5 A4:.5'],
     ['E', 'B4:1 r:.5 E4:.5 C5:.5 B4:.5'],
   ];
+  // 가운데 부분: 음이 한 계단씩 올라가는 밝은 프레이즈 (C → G → Am → E)
+  const eliseRise = [
+    ['C', 'E5:1.5 G4:.5 F5:.5 E5:.5'],
+    ['G', 'D5:1.5 F4:.5 E5:.5 D5:.5'],
+    ['Am', 'C5:1.5 E4:.5 D5:.5 C5:.5'],
+    ['E', 'B4:1 r:.5 E4:.5 E5:.5 D#5:.5'],
+  ];
   SONGS.elise = {
     id: 'elise', title: '엘리제를 위하여', subtitle: '베토벤', level: 3, bpm: 118, beatsPerBar: 3, soft: true,
     sections: [
       { feel: 'intro', chart: false, bars: [['Am', 'r:3'], ['E', 'r:3']] },
+      // A: 익숙한 첫 멜로디
       { feel: 'verse', bars: [['Am', 'r:2 E5:.5 D#5:.5'], ...elise, ['Am', 'A4:2 E5:.5 D#5:.5']] },
-      { feel: 'chorus', bars: [...elise, ['Am', 'A4:2 E5:.5 D#5:.5']] },
-      { feel: 'chorus', bars: [...elise, ['Am', 'A4:2 E5:.5 D#5:.5']] },
+      // A 반복 → 끝에서 시 도 레로 올라가며 다음 부분으로
+      { feel: 'verse', bars: [...elise, ['Am', 'A4:1 r:.5 B4:.5 C5:.5 D5:.5']] },
+      // B: 올라가는 부분 두 번
+      { feel: 'chorus', bars: [...eliseRise, ...eliseRise] },
+      // A로 돌아와 마무리
       { feel: 'chorus', bars: elise },
       { feel: 'outro', bars: [['Am', 'A4:3']] },
     ],
