@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-version="__VERSION__">
 <head>
   <meta charset="utf-8">
   <!-- 보안: 이 페이지가 불러올 수 있는 곳을 우리 사이트 + 폰트 CDN으로만 제한 (외부 스크립트 차단) -->
@@ -11,7 +11,9 @@
   <title>MooljoolDay · 물줄때 리듬게임</title>
   <!-- 버전 고정 + 무결성 검사: CDN 파일이 바뀌면 브라우저가 불러오지 않음 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2.0.5/fonts/static/woff2/SUIT.css" integrity="sha384-mMsv9ePXdDSZ5/ow3/9MfU9yh0kB3kl9FhTuYEPbeOmoJWs1mpXtQ2AlPvHVDLqs" crossorigin="anonymous">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=__VERSION__">
+  <!-- 배포 버전 확인: 예전 버전이 열리면 자동으로 최신 버전으로 다시 불러옴 -->
+  <script src="js/boot.js?v=__VERSION__"></script>
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -24,6 +26,7 @@
       <p class="tagline">목마르면, 물방울이 쏙.</p>
       <button id="btnStart" class="btn">물 주러 가기</button>
       <button id="btnDex" class="btn ghost">식물 도감</button>
+      <button id="btnSettings" class="btn ghost">설정</button>
       <p class="howto">좌우로 드래그해서 땀땀이에게 물방울을 먹여주세요<br><span>PC: D · F · G/H · J · K 키 (방향키·마우스도 OK) · ESC 일시정지</span></p>
     </section>
 
@@ -51,12 +54,34 @@
       <p class="panel-sub" id="pauseSong"></p>
       <button id="btnResume" class="btn">계속하기</button>
       <button id="btnPauseRetry" class="btn ghost">처음부터 다시</button>
+      <button id="btnPauseSettings" class="btn ghost">설정</button>
       <button id="btnPauseSelect" class="btn ghost">곡 고르기</button>
       <button id="btnPauseHome" class="btn ghost">처음 화면</button>
     </section>
 
+    <section id="settings" class="overlay dim">
+      <p class="panel-title">설정</p>
+      <div class="settings-card">
+        <label class="set-row">
+          <span class="set-head"><b>화분 이동 속도</b><em id="setSpeedVal">100%</em></span>
+          <input id="setSpeed" type="range" min="40" max="160" step="5" value="100">
+          <span class="set-ends"><small>느리게</small><small>빠르게</small></span>
+        </label>
+        <label class="set-row">
+          <span class="set-head"><b>음악 소리</b><em id="setMusicVal">100%</em></span>
+          <input id="setMusic" type="range" min="0" max="100" step="5" value="100">
+        </label>
+        <label class="set-row">
+          <span class="set-head"><b>효과음 소리</b><em id="setSfxVal">100%</em></span>
+          <input id="setSfx" type="range" min="0" max="100" step="5" value="100">
+        </label>
+      </div>
+      <button id="btnSettingsClose" class="btn">확인</button>
+      <button id="btnSettingsReset" class="btn ghost">기본값으로</button>
+    </section>
+
     <section id="over" class="overlay dim">
-      <p class="panel-title">식물이 죽었습니다...</p>
+      <p class="panel-title" id="overTitle">식물이 죽었습니다...</p>
       <p class="panel-sub" id="rSong"></p>
       <div class="result">
         <div><span>점수</span><b id="rScore">0</b></div>
@@ -70,11 +95,11 @@
     </section>
   </div>
 
-  <script src="js/audio.js"></script>
-  <script src="js/song.js"></script>
-  <script src="js/songs/mooljoolday.js"></script>
-  <script src="js/songs/classics.js"></script>
-  <script src="js/character.js"></script>
-  <script src="js/game.js"></script>
+  <script src="js/audio.js?v=__VERSION__"></script>
+  <script src="js/song.js?v=__VERSION__"></script>
+  <script src="js/songs/mooljoolday.js?v=__VERSION__"></script>
+  <script src="js/songs/classics.js?v=__VERSION__"></script>
+  <script src="js/character.js?v=__VERSION__"></script>
+  <script src="js/game.js?v=__VERSION__"></script>
 </body>
 </html>

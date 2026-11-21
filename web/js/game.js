@@ -10,7 +10,8 @@
   const BASE_FALL = 1.75;         // 1배속 낙하 시간 (초)
   const SPEEDS = [1, 1.2, 1.5, 1.8, 2.1, 2.4];
   const DRAG_SENS = 1.25;
-  const SATISFY_COMBO = 10;       // 이 콤보에 도달하면 물방울이 쏙 들어감
+  const SATISFY_COMBO = 10;
+  const INVULN_SEC = 1.5;         // 목숨이 줄어든 뒤 무적 시간 (이 동안은 놓쳐도 목숨·콤보 유지)       // 이 콤보에 도달하면 물방울이 쏙 들어감
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -40,6 +41,13 @@
     bests[id] = { score: Math.max(b.score, score), laps: Math.max(b.laps, laps) };
     try { localStorage.setItem(BEST_KEY, JSON.stringify(bests)); } catch (e) { /* 무시 */ }
   }
+
+  // ---------- 설정 (이동 속도 · 음량) ----------
+  const SETTINGS_KEY = 'mooljoolday.settings.v1';
+  const settings = { speed: 1, music: 1, sfx: 1 };
+  try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}); } catch (e) { /* 무시 */ }
+  const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* 무시 */ } };
+  engine.setVolumes(settings.music, settings.sfx);
 
   // ---------- 화면 크기 ----------
   let view = { scale: 1, ox: 0, oy: 0, dpr: 1, cw: 0, ch: 0 };
@@ -76,7 +84,7 @@
   }
 
   // ---------- 화면(오버레이) 전환 ----------
-  const PANELS = ['title', 'select', 'over', 'pause', 'dex'];
+  const PANELS = ['title', 'select', 'over', 'pause', 'dex', 'settings'];
   function showPanel(name) {
     for (const p of PANELS) $(p).classList.toggle('show', p === name);
     stageEl.classList.toggle('playing', (G.state === 'play' || G.state === 'intro') && !G.paused);
@@ -92,7 +100,7 @@
     LANES.forEach((lx, i) => { if (Math.abs(lx - x) < Math.abs(LANES[bi] - x)) bi = i; });
     return bi;
   };
-  const isUI = (el) => el && el.closest && el.closest('button, .song-pager, .dex-list');
+  const isUI = (el) => el && el.closest && el.closest('button, input, .song-list, .dex-list, .settings-card');
 
   window.addEventListener('pointerdown', (e) => {
     if (isUI(e.target)) return;
@@ -323,7 +331,7 @@
     Object.assign(G, {
       state: 'intro', score: 0, combo: 0, maxCombo: 0, lives: 3, laps: 0, growth: 0, caught: 0,
       drops: [], lap: null, banner: null, toast: null, introT: 0, overT: 0, popDone: false, hintA: 0, overShown: false,
-      paused: false, resuming: false, resumeT: 0, holdHintShown: false,
+      paused: false, resuming: false, resumeT: 0, holdHintShown: false, invulnT: 0, success: false, endTitle: '',
     });
     char.pop = 0;
     char.popV = 0;
@@ -518,6 +526,7 @@
   }
 
   function loseLife() {
+    if (G.invulnT > 0) return; // 무적 중: 목숨도 콤보도 그대로
     G.lives--;
     G.combo = 0;
     G.shake = 0.6;
@@ -525,16 +534,38 @@
     engine.sfxMiss();
     if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) try { navigator.vibrate(60); } catch (e) { /* 무시 */ }
     if (G.lives <= 0) gameOver();
-    else thirsty();
+    else {
+      G.invulnT = INVULN_SEC;
+      thirsty();
+    }
+  }
+
+  // 1바퀴 이상 완주 후 끝나면 바퀴 수에 따른 성공 문구
+  function successText(laps) {
+    if (laps <= 1) {
+      const pl = PLANTS[plantFor(SONG)];
+      const got = pl.stages[0];
+      return `${got}${josa(got)} ${pl.harvest === 'tomato' ? '열렸어요' : '피었어요'}!`;
+    }
+    return ['', '', '무럭무럭 자라고 있어요!', '땀땀이가 행복해해요!', '물 주기 달인!'][laps] || '전설의 가드너!';
   }
 
   function gameOver() {
     G.state = 'over';
     G.overT = 0;
+    G.success = G.laps >= 1;
+    G.endTitle = G.success ? successText(G.laps) : '식물이 죽었습니다...';
     engine.fadeOutMusic(1.2);
-    engine.sfxOver();
-    setFace('dead', 9999);
-    char.popTarget = 1;
+    if (G.success) {
+      engine.sfxClear();
+      setFace('happy', 9999);
+      char.popTarget = 0;
+      burst(char.x, CHAR_Y - 230 * CHAR_S, 18, ['#FFB3C4', '#FFD45C', '#ffffff'], 480);
+    } else {
+      engine.sfxOver();
+      setFace('dead', 9999);
+      char.popTarget = 1;
+    }
     for (const d of G.drops) if (d.st === 'fall') burst(d.x, d.y, 5, ['#7DB3EA'], 200);
     G.drops = [];
     G.toast = null;
@@ -543,6 +574,8 @@
   }
 
   function showOverPanel() {
+    $('overTitle').textContent = G.endTitle;
+    $('btnRetry').textContent = G.success ? '한 번 더!' : '다시 물 주기';
     $('rSong').textContent = SONG.title;
     $('rScore').textContent = G.score.toLocaleString();
     $('rLaps').textContent = G.laps;
@@ -567,7 +600,7 @@
   // ---------- 업데이트 ----------
   function updateChar(dt) {
     const prev = char.x;
-    char.x += (char.target - char.x) * (1 - Math.exp(-dt * 22));
+    char.x += (char.target - char.x) * (1 - Math.exp(-dt * 22 * settings.speed));
     char.vx = (char.x - prev) / Math.max(dt, 1e-4);
     char.tilt += (clamp(char.vx * 0.00045, -0.22, 0.22) - char.tilt) * (1 - Math.exp(-dt * 12));
     if (Math.abs(char.vx) > 40) char.walk += dt * 18;
@@ -655,6 +688,7 @@
   }
 
   function updatePlay(dt) {
+    G.invulnT = Math.max(0, (G.invulnT || 0) - dt);
     const now = engine.now;
     const t = now - engine.latency;
     const L = G.lap;
@@ -933,7 +967,7 @@
       text(G.toast.text, clamp(char.x, 150, 570), CHAR_Y - 330 - tt * 30, 40, { scale: s, alpha: a, weight: 900, color: G.toast.color });
     }
     if (G.state === 'over' && !G.overShown) {
-      text('식물이 죽었습니다...', 360, 520, 60, { alpha: Math.min(1, G.overT / 0.6), weight: 900 });
+      text(G.endTitle, 360, 520, 60, { alpha: Math.min(1, G.overT / 0.6), weight: 900 });
     }
   }
 
@@ -948,11 +982,16 @@
     drawBackground();
     if (G.state === 'intro' || G.state === 'play' || G.state === 'over') drawLanes();
     drawDrops();
+    // 무적 중에는 깜빡깜빡
+    const blink = G.state === 'play' && G.invulnT > 0 && Math.floor(G.invulnT * 10) % 2 === 0;
+    ctx.save();
+    if (blink) ctx.globalAlpha = 0.35;
     Ddam.drawDdam(ctx, {
       x: char.x, y: CHAR_Y, s: CHAR_S, tilt: char.tilt, squash: char.squash,
-      face: char.face, health: G.lives / 3, growth: G.growth, pop: char.pop, plant: plantFor(SONG),
+      face: char.face, health: G.state === 'over' && G.success ? 1 : G.lives / 3, growth: G.growth, pop: char.pop, plant: plantFor(SONG),
       walk: Math.abs(char.vx) > 40 ? char.walk : 0, time: G.time,
     });
+    ctx.restore();
     drawParticles();
     drawKeyLabels();
     drawHUD();
@@ -986,6 +1025,56 @@
   $('btnHome').addEventListener('click', goTitle);
   requestAnimationFrame(frame);
 
+  // ---------- 설정 화면 ----------
+  let settingsReturn = 'title';
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  function syncSettingsUI() {
+    $('setSpeed').value = Math.round(settings.speed * 100);
+    $('setSpeedVal').textContent = pct(settings.speed);
+    $('setMusic').value = Math.round(settings.music * 100);
+    $('setMusicVal').textContent = pct(settings.music);
+    $('setSfx').value = Math.round(settings.sfx * 100);
+    $('setSfxVal').textContent = pct(settings.sfx);
+  }
+  function openSettings(from) {
+    settingsReturn = from;
+    syncSettingsUI();
+    showPanel('settings');
+  }
+  $('setSpeed').addEventListener('input', (e) => {
+    settings.speed = Number(e.target.value) / 100;
+    $('setSpeedVal').textContent = pct(settings.speed);
+    saveSettings();
+  });
+  $('setMusic').addEventListener('input', (e) => {
+    settings.music = Number(e.target.value) / 100;
+    $('setMusicVal').textContent = pct(settings.music);
+    engine.setVolumes(settings.music, settings.sfx);
+    saveSettings();
+  });
+  $('setSfx').addEventListener('input', (e) => {
+    settings.sfx = Number(e.target.value) / 100;
+    $('setSfxVal').textContent = pct(settings.sfx);
+    engine.setVolumes(settings.music, settings.sfx);
+    saveSettings();
+  });
+  // 효과음 크기 미리 듣기 (일시정지 중에는 소리 안 냄)
+  $('setSfx').addEventListener('change', () => {
+    if (G.paused) return;
+    engine.init();
+    engine.setVolumes(settings.music, settings.sfx);
+    engine.sfxCatch(79);
+  });
+  $('btnSettings').addEventListener('click', () => openSettings('title'));
+  $('btnPauseSettings').addEventListener('click', () => openSettings('pause'));
+  $('btnSettingsReset').addEventListener('click', () => {
+    Object.assign(settings, { speed: 1, music: 1, sfx: 1 });
+    engine.setVolumes(1, 1);
+    saveSettings();
+    syncSettingsUI();
+  });
+  $('btnSettingsClose').addEventListener('click', () => showPanel(settingsReturn));
+
   // 디버그용 (콘솔에서 상태 확인 / 수동 진행)
-  window.__mooljoolday = { G, char, BUILT, engine, get SONG() { return SONG; }, step: (dt) => { update(dt); render(); } };
+  window.__mooljoolday = { G, char, BUILT, engine, settings, get SONG() { return SONG; }, step: (dt) => { update(dt); render(); } };
 })();

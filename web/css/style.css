@@ -291,3 +291,51 @@ html, body {
 .result span { font-size: calc(var(--u) * 22); font-weight: 600; opacity: .85; }
 .result b { font-size: calc(var(--u) * 40); font-weight: 900; }
 .result b span { font-size: inherit; font-weight: inherit; opacity: 1; }
+
+/* 설정 */
+#title .btn.ghost { margin-top: calc(var(--u) * 16); }
+#title .howto { margin-top: calc(var(--u) * 28); }
+.settings-card {
+  margin-top: calc(var(--u) * 36);
+  width: calc(var(--u) * 560);
+  background: rgba(255, 248, 236, .96);
+  border-radius: calc(var(--u) * 28);
+  padding: calc(var(--u) * 26) calc(var(--u) * 32);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 26);
+  color: #2F5E3E;
+  text-align: left;
+}
+.set-row { display: flex; flex-direction: column; gap: calc(var(--u) * 10); }
+.set-head { display: flex; justify-content: space-between; align-items: baseline; }
+.set-head b { font-size: calc(var(--u) * 30); font-weight: 900; }
+.set-head em { font-style: normal; font-size: calc(var(--u) * 26); font-weight: 800; color: #E7A54A; }
+.set-ends { display: flex; justify-content: space-between; font-size: calc(var(--u) * 20); font-weight: 700; color: #8A9A7E; }
+.set-row input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: calc(var(--u) * 16);
+  border-radius: 999px;
+  background: #DCEBC8;
+  touch-action: pan-x;
+  cursor: pointer;
+}
+.set-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 44);
+  border-radius: 50%;
+  background: #6FAEF0;
+  border: calc(var(--u) * 4) solid #fff;
+  box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 8) rgba(0, 0, 0, .25);
+}
+.set-row input[type=range]::-moz-range-thumb {
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 40);
+  border-radius: 50%;
+  background: #6FAEF0;
+  border: calc(var(--u) * 4) solid #fff;
+}
+#settings .btn:first-of-type { margin-top: calc(var(--u) * 40); }

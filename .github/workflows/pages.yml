@@ -27,6 +27,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      # 배포마다 새 버전 번호를 찍어서, 플레이어가 항상 최신 파일을 받게 함
+      - name: Stamp version
+        run: |
+          VER="${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}"
+          sed -i "s/__VERSION__/${VER}/g" web/index.html
+          printf '{"version":"%s"}\n' "$VER" > web/version.json
+          grep -c "$VER" web/index.html
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:

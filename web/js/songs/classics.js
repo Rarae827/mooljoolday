@@ -128,7 +128,7 @@
     ['A D', 'E5:1.5 D5:.5 D5:2'],
   ];
   SONGS.ode = {
-    id: 'ode', title: '환희의 송가', subtitle: '베토벤 · 교향곡 9번', level: 2, bpm: 116,
+    id: 'ode', title: '환희의 송가', subtitle: '베토벤 · 교향곡 9번', level: 3, bpm: 116,
     sections: [
       { feel: 'intro', chart: false, bars: [['D', 'r:4'], ['A', 'r:4']] },
       { feel: 'verse', bars: ode },
@@ -195,4 +195,5 @@
 })();
 
 // 곡 선택 화면 순서
-window.SONG_ORDER = ['mooljoolday', 'twinkle', 'butterfly', 'birthday', 'jingle', 'ode', 'canon', 'elise'];
+// 테마곡은 맨 위, 나머지는 쉬움 → 보통 → 어려움
+window.SONG_ORDER = ['mooljoolday', 'twinkle', 'butterfly', 'canon', 'birthday', 'jingle', 'ode', 'elise'];

@@ -7,6 +7,7 @@ class AudioEngine {
   constructor() {
     this.ctx = null;
     this.ksCache = new Map();
+    this.vol = { music: 1, sfx: 1 }; // 설정 화면의 음량 (0~1)
   }
 
   init() {
@@ -43,10 +44,13 @@ class AudioEngine {
     this.master.connect(comp);
     comp.connect(ctx.destination);
 
-    this.music = ctx.createGain();
-    this.music.connect(this.master);
+    this.music = ctx.createGain(); // 페이드아웃용
+    this.musicVol = ctx.createGain(); // 설정 음량
+    this.musicVol.gain.value = this.vol.music;
+    this.music.connect(this.musicVol);
+    this.musicVol.connect(this.master);
     this.sfx = ctx.createGain();
-    this.sfx.gain.value = 0.7;
+    this.sfx.gain.value = 0.7 * this.vol.sfx;
     this.sfx.connect(this.master);
 
     this.reverb = ctx.createConvolver();
@@ -97,6 +101,14 @@ class AudioEngine {
       g.connect(this.buses[k]);
       this.rb[k] = g;
     }
+  }
+
+  setVolumes(music, sfx) {
+    this.vol = { music, sfx };
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.musicVol.gain.setTargetAtTime(music, t, 0.03);
+    this.sfx.gain.setTargetAtTime(0.7 * sfx, t, 0.03);
   }
 
   suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
