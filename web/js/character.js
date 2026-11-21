@@ -325,6 +325,7 @@
     c.restore();
   }
 
+
   function bodyPath(c) {
     c.beginPath();
     c.moveTo(-80, -150);
@@ -627,15 +628,33 @@
     c.lineWidth = 4.5;
     c.strokeStyle = OUTLINE;
     c.stroke();
+    // 화분 안의 흙
+    c.save();
     c.beginPath();
-    c.ellipse(0, -149, 64, 8.5, 0, 0, Math.PI * 2);
+    c.ellipse(-14, -148.5, 52, 9, 0, 0, Math.PI * 2);
+    const soil = c.createRadialGradient(-20, -147, 4, -14, -148.5, 56);
+    soil.addColorStop(0, '#93694B');
+    soil.addColorStop(0.7, '#7A563C');
+    soil.addColorStop(1, '#654630');
+    c.fillStyle = soil;
+    c.fill();
+    c.clip();
+    // 뒤쪽 테두리 그림자 (흙이 안쪽으로 들어가 보이게)
+    c.beginPath();
+    c.ellipse(-14, -153.5, 52, 7.5, 0, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(60,38,22,.28)';
+    c.fill();
+    c.restore();
+    // 흙과 테두리 사이 안쪽 턱
+    c.beginPath();
+    c.ellipse(-14, -148.5, 52, 9, 0, 0, Math.PI * 2);
     c.lineWidth = 2.5;
-    c.strokeStyle = '#E8D6B8';
+    c.strokeStyle = '#E2CDAD';
     c.stroke();
-    // 물방울 구멍
+    // 물방울이 나오는 구멍
     c.beginPath();
-    c.ellipse(50, -150, 11, 4.2, 0, 0, Math.PI * 2);
-    c.fillStyle = '#D5BC95';
+    c.ellipse(50, -150, 9.5, 3.6, 0, 0, Math.PI * 2);
+    c.fillStyle = '#CDB18A';
     c.fill();
 
     drawSprout(c, o, h);
