@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>[DEV] 식물 미리보기 · MooljoolDay</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/static/woff2/SUIT.css">
+  <style>
+    :root { --bg: #EEF3E4; --card: #FFFDF7; --ink: #2F5E3E; --sub: #6A7F5E; --line: #D8E2C8; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--ink); font-family: SUIT, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; padding: 24px 16px 60px; }
+    header { max-width: 1100px; margin: 0 auto 18px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+    h1 { font-size: 26px; font-weight: 900; }
+    .badge { font-size: 12px; font-weight: 800; color: #fff; background: #E0645A; border-radius: 999px; padding: 4px 10px; }
+    .note { width: 100%; font-size: 13px; color: var(--sub); line-height: 1.6; }
+    .controls { max-width: 1100px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 10px 22px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+    .ctl { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .seg button { font: inherit; font-size: 13px; font-weight: 700; border: none; background: #fff; color: var(--ink); padding: 6px 10px; cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button.on { background: var(--ink); color: #fff; }
+    input[type=range] { width: 110px; accent-color: var(--ink); }
+    section { max-width: 1100px; margin: 0 auto 26px; }
+    h2 { font-size: 18px; font-weight: 900; margin-bottom: 10px; }
+    .grid { display: grid; grid-template-columns: 130px repeat(2, minmax(0, 260px)); gap: 8px; align-items: stretch; }
+    .colhead { font-size: 13px; font-weight: 800; color: var(--sub); text-align: center; padding: 4px 0; }
+    .rowhead { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+    .rowhead b { font-size: 16px; font-weight: 900; }
+    .rowhead small { font-size: 12px; color: var(--sub); font-weight: 700; }
+    .cell { background: linear-gradient(#DCEBC8, #C8DDAF); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding-bottom: 6px; }
+    .cell canvas { width: 100%; aspect-ratio: 1 / 1.05; display: block; }
+    .cell span { font-size: 12px; font-weight: 800; }
+    .icons { display: flex; flex-wrap: wrap; gap: 12px; }
+    .icon { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; }
+    .icon canvas { width: 80px; height: 80px; border-radius: 18px; background: radial-gradient(circle at 50% 40%, #F1F8E6, #DCEBC8); }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 74px repeat(2, 1fr); gap: 5px; }
+      .rowhead { padding: 6px; }
+      .rowhead b { font-size: 13px; }
+      .cell span { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>식물 미리보기</h1><span class="badge">개발자 전용</span>
+    <p class="note">게임 배포 폴더(<code>web/</code>) 밖에 있는 확인용 페이지예요. 플레이어용 사이트에는 포함되지 않아요.<br>
+      게임과 같은 <code>web/js/character.js</code>를 그대로 불러와서 그리므로, 여기서 보이는 모습이 실제 게임과 같아요.</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">목숨 <div class="seg" id="lives"><button data-v="3" class="on">3</button><button data-v="2">2</button><button data-v="1">1</button><button data-v="0">0</button></div></div>
+    <div class="ctl">표정 <div class="seg" id="face"><button data-v="happy" class="on">기쁨</button><button data-v="idle">기본</button><button data-v="surprised">놀람</button><button data-v="hurt">아픔</button><button data-v="dead">죽음</button></div></div>
+    <div class="ctl">물방울 <input type="range" id="pop" min="0" max="1" step="0.01" value="0"></div>
+    <div class="ctl">보기 <div class="seg" id="zoom"><button data-v="full" class="on">전체</button><button data-v="top">식물 확대</button></div></div>
+    <div class="ctl">움직임 <div class="seg" id="anim"><button data-v="1" class="on">켜기</button><button data-v="0">멈춤</button></div></div>
+  </div>
+
+  <section>
+    <h2>성장 단계</h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section>
+    <h2>곡 카드 아이콘</h2>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <script src="../web/js/character.js"></script>
+  <script>
+    const S = { lives: 3, face: 'happy', pop: 0, zoom: 'full', anim: true };
+    const STAGE_HEAD = ['새싹 (완곡 전)', '다 자람 (1바퀴 완곡)'];
+    const grid = document.getElementById('grid');
+    const cells = [];
+
+    grid.appendChild(Object.assign(document.createElement('div'), {}));
+    STAGE_HEAD.forEach((t) => grid.appendChild(Object.assign(document.createElement('div'), { className: 'colhead', textContent: t })));
+
+    for (const key of Ddam.PLANT_ORDER) {
+      const pl = Ddam.PLANTS[key];
+      const head = document.createElement('div');
+      head.className = 'rowhead';
+      head.innerHTML = `<b>${pl.name}</b><small>${pl.hint}</small><small>${key}</small>`;
+      grid.appendChild(head);
+      for (let g = 0; g <= 1; g++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const cv = document.createElement('canvas');
+        const label = document.createElement('span');
+        label.textContent = g === 0 ? '떡잎' : pl.stages[0];
+        cell.append(cv, label);
+        grid.appendChild(cell);
+        cells.push({ cv, key, g });
+      }
+    }
+
+    const icons = document.getElementById('icons');
+    for (const key of Ddam.PLANT_ORDER) {
+      const box = document.createElement('div');
+      box.className = 'icon';
+      const cv = document.createElement('canvas');
+      box.append(cv, document.createTextNode(Ddam.PLANTS[key].name));
+      icons.appendChild(box);
+      requestAnimationFrame(() => {
+        const dpr = window.devicePixelRatio || 1;
+        cv.width = 80 * dpr; cv.height = 80 * dpr;
+        const c = cv.getContext('2d');
+        c.setTransform(0.8 * dpr, 0, 0, 0.8 * dpr, 0, 0);
+        Ddam.drawPlantIcon(c, key);
+      });
+    }
+
+    function sizeCanvas(cv) {
+      const r = cv.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      return { w: r.width, h: r.height, dpr };
+    }
+
+    let t0 = performance.now(), frozenT = 1;
+    function draw(now) {
+      const time = S.anim ? (now - t0) / 1000 : frozenT;
+      for (const { cv, key, g } of cells) {
+        const { w, h, dpr } = sizeCanvas(cv);
+        const c = cv.getContext('2d');
+        c.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c.clearRect(0, 0, w, h);
+        const o = { x: w / 2, face: S.face, health: S.lives / 3, growth: g, plant: key, pop: S.pop, time };
+        if (S.zoom === 'top') { o.s = h / 240; o.y = h + 62 * o.s; }
+        else { o.s = (h * 0.92) / 330; o.y = h - 6; }
+        Ddam.drawDdam(c, o);
+      }
+      requestAnimationFrame(draw);
+    }
+    requestAnimationFrame(draw);
+
+    function seg(id, apply) {
+      const el = document.getElementById(id);
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        el.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+        apply(b.dataset.v);
+      });
+    }
+    seg('lives', (v) => { S.lives = Number(v); });
+    seg('face', (v) => { S.face = v; });
+    seg('zoom', (v) => { S.zoom = v; });
+    seg('anim', (v) => { S.anim = v === '1'; frozenT = (performance.now() - t0) / 1000; });
+    document.getElementById('pop').addEventListener('input', (e) => { S.pop = Number(e.target.value); });
+  </script>
+</body>
+</html>
