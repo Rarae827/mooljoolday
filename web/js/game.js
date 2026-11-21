@@ -84,9 +84,10 @@
   }
 
   // ---------- 화면(오버레이) 전환 ----------
-  const PANELS = ['title', 'select', 'over', 'pause', 'dex', 'settings'];
+  const PANELS = ['title', 'select', 'over', 'pause', 'dex', 'settings', 'howto', 'about'];
   function showPanel(name) {
     for (const p of PANELS) $(p).classList.toggle('show', p === name);
+    document.body.classList.toggle('info-open', name === 'howto' || name === 'about');
     stageEl.classList.toggle('playing', (G.state === 'play' || G.state === 'intro') && !G.paused);
   }
 
@@ -100,7 +101,7 @@
     LANES.forEach((lx, i) => { if (Math.abs(lx - x) < Math.abs(LANES[bi] - x)) bi = i; });
     return bi;
   };
-  const isUI = (el) => el && el.closest && el.closest('button, input, .song-list, .dex-list, .settings-card');
+  const isUI = (el) => el && el.closest && el.closest('button, input, .song-list, .dex-list, .settings-card, .info-list, .about-pager');
 
   window.addEventListener('pointerdown', (e) => {
     if (isUI(e.target)) return;
@@ -121,14 +122,20 @@
   window.addEventListener('pointerup', endDrag);
   window.addEventListener('pointercancel', endDrag);
 
-  // 줄 키: D F (G·H) J K — e.code 기준이라 한/영 입력 상태와 무관하게 동작
-  const LANE_KEYS = { KeyD: 0, KeyF: 1, KeyG: 2, KeyH: 2, KeyJ: 3, KeyK: 4 };
-  const LANE_LABELS = ['D', 'F', 'G H', 'J', 'K'];
+  // 줄 키: D F Space J K — e.code 기준이라 한/영 입력 상태와 무관하게 동작
+  const LANE_KEYS = { KeyD: 0, KeyF: 1, Space: 2, KeyJ: 3, KeyK: 4 };
+  const LANE_LABELS = ['D', 'F', 'SPACE', 'J', 'K'];
   const laneFlash = [0, 0, 0, 0, 0];
   let showKeys = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
 
   window.addEventListener('keydown', (e) => {
     const k = e.key, code = e.code;
+    // 처음 화면에서는 Space / Enter로 시작
+    if ((code === 'Space' || k === 'Enter') && G.state === 'title' && $('title').classList.contains('show')) {
+      e.preventDefault();
+      showSelect();
+      return;
+    }
     if (k === 'Escape' || code === 'KeyP') {
       if (G.paused && !G.resuming) resumeGame();
       else pauseGame();
@@ -147,9 +154,11 @@
     } else if (k === 'ArrowRight') {
       moveTarget(LANES[clamp(nearestLane(char.target) + 1, 0, 4)]);
       e.preventDefault();
-    } else if ((k === ' ' || k === 'Enter') && G.state === 'title') {
-      showSelect();
     }
+  });
+  // 게임 중 Space가 화면의 버튼(직전에 누른 버튼 등)을 눌러버리지 않게
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space' && (G.state === 'play' || G.state === 'intro')) e.preventDefault();
   });
   window.addEventListener('touchstart', () => { showKeys = false; }, { passive: true });
 
@@ -323,6 +332,7 @@
 
   // ---------- 게임 흐름 ----------
   function startGame(id) {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     SONG = BUILT[id || SONG.id];
     engine.init();
     engine.newRun();
@@ -822,7 +832,7 @@
     if (!showKeys || !(G.state === 'intro' || G.state === 'play')) return;
     LANES.forEach((x, i) => {
       const lit = laneFlash[i];
-      const w = i === 2 ? 76 : 50;
+      const w = i === 2 ? 104 : 50;
       ctx.fillStyle = `rgba(255,250,240,${0.18 + lit * 0.6})`;
       ctx.strokeStyle = 'rgba(255,255,255,.55)';
       ctx.lineWidth = 2.5;
@@ -1005,6 +1015,7 @@
     last = now;
     update(dt);
     render();
+    drawAboutScenes(now / 1000);
     requestAnimationFrame(frame);
   }
 
@@ -1075,6 +1086,263 @@
   });
   $('btnSettingsClose').addEventListener('click', () => showPanel(settingsReturn));
 
+  // ---------- 게임 방법 (?) · 제품 소개 (새싹) — 서로 다른 화면 ----------
+  let infoReturn = 'title';
+  let aboutOpen = false;
+  let aboutPage = 0;
+  const ABOUT_PAGES = 4;
+
+  function prepCanvas(cv, logicalW, logicalH) {
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const w = Math.max(1, Math.round(r.width * dpr));
+    const h = Math.max(1, Math.round(r.height * dpr));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const c = cv.getContext('2d');
+    const lw = logicalW || r.width;
+    const lh = logicalH || r.height;
+    c.setTransform(w / lw, 0, 0, h / lh, 0, 0);
+    c.clearRect(0, 0, lw, lh);
+    return { c, w: lw, h: lh };
+  }
+
+  function drawHowtoIcon(kind, cv) {
+    const { c } = prepCanvas(cv, 100, 100);
+    if (kind === 'drop') {
+      Ddam.drawWaterDrop(c, 50, 58, 20);
+    } else if (kind === 'can') {
+      c.save(); c.translate(26, 84); c.scale(0.78, 0.78); Ddam.drawWateringCan(c, 0, 0); c.restore();
+      c.fillStyle = 'rgba(111,174,240,.8)';
+      c.fillRect(21, 84, 10, 12);
+    } else if (kind === 'leaf') {
+      Ddam.drawLeafIcon(c, 18, 66, 30, true);
+      Ddam.drawLeafIcon(c, 44, 66, 30, true);
+      Ddam.drawLeafIcon(c, 70, 66, 30, false);
+    } else if (kind === 'pop') {
+      Ddam.drawDdam(c, { x: 50, y: 112, s: 0.42, face: 'happy', health: 1, growth: 0, pop: 1, plant: 'basil', time: 1 });
+    } else if (kind === 'flower') {
+      c.save(); c.scale(0.96, 0.96); Ddam.drawPlantIcon(c, 'dew'); c.restore();
+    } else if (kind === 'move') {
+      Ddam.drawDdam(c, { x: 50, y: 94, s: 0.34, face: 'happy', health: 1, growth: 0, pop: 0, plant: 'basil', time: 1, tilt: 0.12 });
+      c.strokeStyle = '#2F5E3E';
+      c.fillStyle = '#2F5E3E';
+      c.lineWidth = 4;
+      c.lineCap = 'round';
+      for (const sx of [-1, 1]) {
+        c.beginPath(); c.moveTo(50 + sx * 30, 22); c.lineTo(50 + sx * 44, 22); c.stroke();
+        c.beginPath(); c.moveTo(50 + sx * 48, 22); c.lineTo(50 + sx * 40, 15); c.lineTo(50 + sx * 40, 29); c.closePath(); c.fill();
+      }
+    } else if (kind === 'star') {
+      const star = (x, y, r, col) => {
+        c.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 5;
+          const rr = i % 2 ? r * 0.45 : r;
+          c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+        }
+        c.closePath();
+        c.fillStyle = col;
+        c.fill();
+      };
+      star(28, 60, 14, '#F2C94C'); star(50, 44, 18, '#FFD45C'); star(72, 60, 14, '#F2C94C');
+      c.font = '900 16px SUIT, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#2F5E3E'; c.fillText('x1.5', 50, 88);
+    } else if (kind === 'levels') {
+      [['#6DB66A', 30], ['#E7A54A', 50], ['#E0645A', 70]].forEach(([col, h], i) => {
+        c.fillStyle = col;
+        c.beginPath();
+        if (c.roundRect) c.roundRect(20 + i * 22, 84 - h, 16, h, 6); else c.rect(20 + i * 22, 84 - h, 16, h);
+        c.fill();
+      });
+    } else if (kind === 'pause') {
+      c.beginPath(); c.arc(50, 50, 30, 0, Math.PI * 2); c.fillStyle = '#2F5E3E'; c.fill();
+      c.fillStyle = '#fff'; c.fillRect(39, 36, 8, 28); c.fillRect(53, 36, 8, 28);
+    }
+  }
+
+  function openHowto(from) {
+    infoReturn = from;
+    showPanel('howto');
+    $('howtoList').scrollTop = 0;
+    requestAnimationFrame(() => {
+      document.querySelectorAll('#howto canvas[data-icon]').forEach((cv) => drawHowtoIcon(cv.dataset.icon, cv));
+      updateHowtoFade();
+    });
+  }
+
+  function updateHowtoFade() {
+    const l = $('howtoList');
+    l.classList.toggle('fade-top', l.scrollTop > 2);
+    l.classList.toggle('fade-bottom', l.scrollTop + l.clientHeight < l.scrollHeight - 2);
+  }
+  $('howtoList').addEventListener('scroll', updateHowtoFade, { passive: true });
+
+  function openAbout(from) {
+    infoReturn = from;
+    aboutOpen = true;
+    showPanel('about');
+    setAboutPage(0, true);
+  }
+
+  function closeInfo() {
+    aboutOpen = false;
+    showPanel(infoReturn);
+  }
+
+  function setAboutPage(p, instant) {
+    aboutPage = clamp(p, 0, ABOUT_PAGES - 1);
+    const track = $('aboutTrack');
+    track.style.transition = instant ? 'none' : '';
+    track.style.transform = `translateX(${-aboutPage * 100}%)`;
+    const dotsEl = $('aboutDots');
+    if (!dotsEl.children.length) {
+      for (let i = 0; i < ABOUT_PAGES; i++) {
+        const d = document.createElement('button');
+        d.className = 'pg-dot';
+        d.setAttribute('aria-label', `${i + 1}번째 소개`);
+        d.addEventListener('click', () => setAboutPage(i));
+        dotsEl.appendChild(d);
+      }
+    }
+    [...dotsEl.children].forEach((d, i) => d.classList.toggle('on', i === aboutPage));
+    $('aboutPrev').disabled = aboutPage === 0;
+    $('aboutNext').disabled = aboutPage === ABOUT_PAGES - 1;
+  }
+
+  // 손가락으로 밀어서 넘기기
+  let swipe = null;
+  $('aboutPager').addEventListener('pointerdown', (e) => { swipe = { x: e.clientX, moved: false }; });
+  $('aboutPager').addEventListener('pointermove', (e) => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x;
+    if (Math.abs(dx) > 10) swipe.moved = true;
+    if (swipe.moved) {
+      const track = $('aboutTrack');
+      track.style.transition = 'none';
+      track.style.transform = `translateX(calc(${-aboutPage * 100}% + ${dx}px))`;
+    }
+  });
+  const endSwipe = (e) => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x;
+    const moved = swipe.moved;
+    swipe = null;
+    if (!moved) return;
+    const w = $('aboutPager').getBoundingClientRect().width;
+    if (dx < -w * 0.18) setAboutPage(aboutPage + 1);
+    else if (dx > w * 0.18) setAboutPage(aboutPage - 1);
+    else setAboutPage(aboutPage);
+  };
+  $('aboutPager').addEventListener('pointerup', endSwipe);
+  $('aboutPager').addEventListener('pointercancel', endSwipe);
+  $('aboutPager').addEventListener('pointerleave', endSwipe);
+
+  // 제품 소개 장면 (땀땀이가 직접 보여줌)
+  const smooth = (x) => x * x * (3 - 2 * x);
+  function drawAboutScene(kind, cv, t) {
+    const { c, w, h } = prepCanvas(cv);
+    const s = h / 360;
+    const px = w / 2;
+    const py = h * 0.9;
+    if (kind !== 'kit') {
+      c.fillStyle = 'rgba(62,107,73,.35)';
+      c.beginPath();
+      c.ellipse(px, py + 4 * s, w * 0.36, h * 0.06, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+    const label = (txt, x, y, size, color) => {
+      c.font = `800 ${size}px MJRound, SUIT, sans-serif`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = color || '#fff';
+      c.fillText(txt, x, y);
+    };
+    if (kind === 'thirsty') {
+      const k = t % 3.4;
+      let pop = 0;
+      if (k >= 0.6 && k < 1.0) pop = smooth((k - 0.6) / 0.4);
+      else if (k >= 1.0 && k < 2.6) pop = 1;
+      else if (k >= 2.6 && k < 3.0) pop = 1 - smooth((k - 2.6) / 0.4);
+      Ddam.drawDdam(c, { x: px, y: py, s, face: pop > 0.5 ? 'surprised' : 'idle', health: 1, growth: 0, pop, plant: 'basil', time: t });
+      if (pop > 0.9) label('목말라요!', px + 95 * s, py - 250 * s, 26 * s, '#E8F4FF');
+    } else if (kind === 'water') {
+      const k = t % 4.6;
+      const pouring = k > 1.2 && k < 3.0;
+      let pop = 0;
+      if (k < 1.8) pop = 1;
+      else if (k < 2.4) pop = 1 - smooth((k - 1.8) / 0.6);
+      else if (k >= 4.2) pop = smooth((k - 4.2) / 0.4);
+      const happy = k > 2.4 && k < 4.2;
+      Ddam.drawDdam(c, { x: px, y: py, s, face: happy ? 'happy' : 'idle', health: 1, growth: 0, pop, plant: 'basil', time: t });
+      if (pouring) {
+        const tipX = px - 40 * s;
+        const tipY = py - 230 * s;
+        c.fillStyle = 'rgba(160,205,250,.85)';
+        c.fillRect(tipX - 5 * s, tipY, 10 * s, (py - 152 * s) - tipY);
+        c.save(); c.translate(tipX, tipY); c.scale(-s * 1.1, s * 1.1); Ddam.drawWateringCan(c, 0, 0); c.restore();
+      }
+      if (happy) label('촉촉해요!', px + 95 * s, py - 250 * s, 26 * s, '#FFF3C4');
+    } else if (kind === 'kit') {
+      // 키트 씨앗 3종만 나란히
+      const items = [['basil', '바질'], ['perilla', '들깨'], ['tomato', '초소형 토마토']];
+      const r = Math.min(w / 7.2, h * 0.21);
+      items.forEach(([key, name], i) => {
+        const cx = w * (0.2 + i * 0.3);
+        const cy = h * 0.44 + Math.sin(t * 2 + i * 1.3) * 5 * s;
+        c.save();
+        c.translate(cx - r, cy - r);
+        c.scale(r / 50, r / 50);
+        c.fillStyle = 'rgba(255,250,240,.9)';
+        c.beginPath();
+        c.arc(50, 50, 50, 0, Math.PI * 2);
+        c.fill();
+        Ddam.drawPlantIcon(c, key);
+        c.restore();
+        label(name, cx, h * 0.44 + r + 34 * s, 24 * s);
+      });
+    } else if (kind === 'brand') {
+      const bob = Math.sin(t * 2.2) * 4 * s;
+      Ddam.drawDdam(c, { x: px, y: py + bob * 0.3, s: s * 1.05, face: 'happy', health: 1, growth: 1, pop: 0, plant: 'dew', time: t, squash: Math.max(0, Math.sin(t * 4.4)) * 0.15 });
+      // 방긋 웃을 때 옆에 퐁퐁 피어나는 꽃 (만화 연출처럼)
+      const BLOOMS = [
+        [-1, -175, 20, 0.0, '#FFB3C4', '#E98AA2'],
+        [-1, -95, 14, 0.35, '#FFE08A', '#E3B23C'],
+        [1, -185, 17, 0.6, '#FFE08A', '#E3B23C'],
+        [1, -105, 21, 0.95, '#FFB3C4', '#E98AA2'],
+      ];
+      const easeBack = (x) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2);
+      for (const [side, dy, size, delay, petal, edge] of BLOOMS) {
+        const k = (t + delay * 2.4) % 2.4;
+        const grow = k < 0.35 ? easeBack(k / 0.35) : 1;
+        const alpha = k < 1.7 ? 1 : Math.max(0, 1 - (k - 1.7) / 0.5);
+        if (alpha <= 0) continue;
+        c.save();
+        c.globalAlpha = alpha;
+        c.translate(px + side * (138 + size) * s, py + dy * s);
+        c.rotate(t * 1.4 * side);
+        c.scale(grow, grow);
+        Ddam.drawFlower(c, 0, 0, size * s, 0, { petal, edge, center: '#FFF6E0', n: 5, type: 'drop' });
+        c.restore();
+      }
+    }
+  }
+
+  function drawAboutScenes(t) {
+    if (!aboutOpen) return;
+    const cards = document.querySelectorAll('#about canvas[data-scene]');
+    cards.forEach((cv, i) => {
+      if (Math.abs(i - aboutPage) <= 1) drawAboutScene(cv.dataset.scene, cv, t);
+    });
+  }
+
+  $('btnHowto').addEventListener('click', () => openHowto('title'));
+  $('btnAbout').addEventListener('click', () => openAbout('title'));
+  $('btnPauseHowto').addEventListener('click', () => openHowto('pause'));
+  $('btnPauseAbout').addEventListener('click', () => openAbout('pause'));
+  $('btnHowtoBack').addEventListener('click', closeInfo);
+  $('btnAboutBack').addEventListener('click', closeInfo);
+  $('aboutPrev').addEventListener('click', () => setAboutPage(aboutPage - 1));
+  $('aboutNext').addEventListener('click', () => setAboutPage(aboutPage + 1));
+
   // 디버그용 (콘솔에서 상태 확인 / 수동 진행)
-  window.__mooljoolday = { G, char, BUILT, engine, settings, get SONG() { return SONG; }, step: (dt) => { update(dt); render(); } };
+  window.__mooljoolday = { G, char, BUILT, engine, settings, drawAboutScenes, get SONG() { return SONG; }, step: (dt) => { update(dt); render(); } };
 })();

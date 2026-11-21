@@ -339,3 +339,185 @@ html, body {
   border: calc(var(--u) * 4) solid #fff;
 }
 #settings .btn:first-of-type { margin-top: calc(var(--u) * 40); }
+
+/* ? (게임 방법) · 새싹 (제품 소개) 버튼 */
+.corner-btns {
+  position: absolute;
+  top: calc(var(--u) * 40);
+  right: calc(var(--u) * 34);
+  display: flex;
+  gap: calc(var(--u) * 14);
+}
+.round-btn {
+  width: calc(var(--u) * 72);
+  height: calc(var(--u) * 72);
+  border-radius: 50%;
+  border: none;
+  background: #FFF6E8;
+  color: #2F5E3E;
+  font: inherit;
+  font-family: SUIT, sans-serif;
+  font-weight: 900;
+  font-size: calc(var(--u) * 40);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 calc(var(--u) * 5) 0 #D9B98A;
+  cursor: pointer;
+}
+.round-btn:active { transform: translateY(calc(var(--u) * 4)); box-shadow: 0 calc(var(--u) * 1) 0 #D9B98A; }
+.round-btn svg { width: 72%; height: 72%; }
+#pause .corner-btns { top: calc(var(--u) * 52); right: calc(var(--u) * 34); }
+
+/* 정보 화면 공통 */
+.overlay.info-panel { padding: calc(var(--u) * 70) calc(var(--u) * 40) 0; background: linear-gradient(#2F5E3E, #24432D); }
+.info-list {
+  margin-top: calc(var(--u) * 26);
+  width: 100%;
+  max-height: calc(var(--u) * 1080);
+  overflow-y: auto;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 12);
+  padding-bottom: calc(var(--u) * 20);
+  scrollbar-width: none;
+}
+.info-list::-webkit-scrollbar { display: none; }
+.info-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 20);
+  background: rgba(255, 248, 236, .96);
+  color: #2F5E3E;
+  border-radius: calc(var(--u) * 26);
+  padding: calc(var(--u) * 14) calc(var(--u) * 20);
+  text-align: left;
+}
+.info-row canvas {
+  flex: none;
+  width: calc(var(--u) * 84);
+  height: calc(var(--u) * 84);
+  border-radius: calc(var(--u) * 20);
+  background: radial-gradient(circle at 50% 40%, #F1F8E6, #DCEBC8);
+}
+.info-row b { display: block; font-size: calc(var(--u) * 28); font-weight: 900; margin-bottom: calc(var(--u) * 6); }
+.info-row p { font-size: calc(var(--u) * 19.5); font-weight: 600; line-height: 1.45; color: #5E7254; }
+
+/* 제품 소개 카드 */
+.about-pager {
+  margin-top: calc(var(--u) * 26);
+  width: calc(100% + var(--u) * 16);
+  margin-left: calc(var(--u) * -8);
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.about-track { display: flex; transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.about-card {
+  flex: 0 0 100%;
+  padding: 0 calc(var(--u) * 8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.about-card canvas {
+  width: 100%;
+  height: calc(var(--u) * 520);
+  border-radius: calc(var(--u) * 30);
+  background: linear-gradient(#C9DCA6, #9DB066);
+}
+.about-card h3 { margin-top: calc(var(--u) * 30); font-size: calc(var(--u) * 46); font-weight: 900; }
+.about-card p { margin-top: calc(var(--u) * 14); font-size: calc(var(--u) * 25); font-weight: 600; line-height: 1.6; opacity: .95; }
+.about-card .team { margin-top: calc(var(--u) * 22); font-family: SUIT, sans-serif; font-size: calc(var(--u) * 30); font-weight: 900; letter-spacing: .08em; color: #FFE7A3; }
+.about-nav { display: flex; align-items: center; gap: calc(var(--u) * 22); margin-top: calc(var(--u) * 30); }
+.pg-arrow {
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  border-radius: 50%;
+  border: none;
+  background: #FFF6E8;
+  color: #2F5E3E;
+  font: inherit;
+  font-size: calc(var(--u) * 44);
+  line-height: 1;
+  padding-bottom: calc(var(--u) * 5);
+  box-shadow: 0 calc(var(--u) * 5) 0 #D9B98A;
+  cursor: pointer;
+}
+.pg-arrow:disabled { opacity: .35; cursor: default; }
+.pg-dots { display: flex; gap: calc(var(--u) * 12); }
+.pg-dot {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, .45);
+  cursor: pointer;
+  transition: width .3s, background .3s;
+}
+.pg-dot.on { width: calc(var(--u) * 40); background: #fff; }
+
+/* 게임 방법 · 제품 설명: 화면 전체 어두운 녹색 배경 */
+#backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(24, 52, 32, .5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease;
+}
+body.info-open #backdrop { opacity: 1; }
+/* PC·태블릿처럼 화면이 넓을 때는 패널 자체 배경을 빼서 휴대폰 모양 상자가 보이지 않게 */
+@media (min-aspect-ratio: 3/5) {
+  .overlay.info-panel { background: transparent; }
+}
+
+/* 게임 방법: 자세한 설명 */
+.info-sec {
+  flex: none;
+  margin: calc(var(--u) * 12) 0 calc(var(--u) * 2) calc(var(--u) * 6);
+  font-size: calc(var(--u) * 26);
+  font-weight: 900;
+  color: #FFE7A3;
+  text-align: left;
+}
+.info-sec:first-child { margin-top: 0; }
+.info-row { align-items: flex-start; }
+.info-row > div { flex: 1; min-width: 0; }
+.info-row p + p { margin-top: calc(var(--u) * 6); }
+.info-row p em { font-style: normal; font-weight: 800; color: #2F5E3E; margin-right: calc(var(--u) * 6); }
+.info-row p strong { font-weight: 800; color: #2F5E3E; }
+.info-row p.note { font-size: calc(var(--u) * 18); color: #8A9A7E; }
+.info-row .lv { font-size: calc(var(--u) * 18); padding: calc(var(--u) * 3) calc(var(--u) * 12); margin-right: calc(var(--u) * 6); }
+.keycaps { display: flex; gap: calc(var(--u) * 8); margin: calc(var(--u) * 10) 0 calc(var(--u) * 4); }
+.keycaps span { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 4); }
+.keycaps small { font-size: calc(var(--u) * 15); font-weight: 700; color: #8A9A7E; }
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--u) * 46);
+  height: calc(var(--u) * 44);
+  padding: 0 calc(var(--u) * 8);
+  border-radius: calc(var(--u) * 10);
+  background: #fff;
+  border: calc(var(--u) * 2) solid #CDBFA6;
+  box-shadow: 0 calc(var(--u) * 4) 0 #CDBFA6;
+  font-family: SUIT, sans-serif;
+  font-size: calc(var(--u) * 20);
+  font-weight: 900;
+  color: #2F5E3E;
+}
+kbd.wide { min-width: calc(var(--u) * 76); }
+kbd.inline { height: calc(var(--u) * 30); min-width: 0; font-size: calc(var(--u) * 16); box-shadow: 0 calc(var(--u) * 2) 0 #CDBFA6; vertical-align: middle; }
+/* 스크롤 위·아래 부드럽게 흐려짐 (곡 목록과 같은 방식) */
+.info-list {
+  --ft: 0px;
+  --fb: 0px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%);
+}
+.info-list.fade-top { --ft: calc(var(--u) * 60); }
+.info-list.fade-bottom { --fb: calc(var(--u) * 90); }
